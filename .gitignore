@@ -11,3 +11,6 @@ backend/eval/data/
 **/.hallmark/shots/
 test-results/
 playwright-report/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo

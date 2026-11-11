@@ -1,0 +1,199 @@
+{
+  "dataset": "Three bundled synthetic demo receipts; NOT a held-out real-photo benchmark",
+  "engine": "paddle",
+  "startup_seconds": 8.678,
+  "results": [
+    {
+      "sample": "kapihan",
+      "seconds": 10.478,
+      "fields": {
+        "merchant": {
+          "expected": "Kapihan sa Kanto",
+          "actual": "KAPIHAN SA KANTO",
+          "matches": true
+        },
+        "merchant_tin": {
+          "expected": "000-482-117-000",
+          "actual": "000-482-117-000",
+          "matches": true
+        },
+        "receipt_number": {
+          "expected": "0004417",
+          "actual": "0004417",
+          "matches": true
+        },
+        "receipt_date": {
+          "expected": "2026-11-09",
+          "actual": "2026-11-09",
+          "matches": true
+        },
+        "vatable_sales": {
+          "expected": "120.54",
+          "actual": "120.54",
+          "matches": true
+        },
+        "vat_amount": {
+          "expected": "14.46",
+          "actual": "14.46",
+          "matches": true
+        },
+        "total": {
+          "expected": "145.00",
+          "actual": "145.00",
+          "matches": true
+        }
+      },
+      "items": 2,
+      "checks": [
+        {
+          "name": "vat_math",
+          "passed": true,
+          "detail": "Expected 14.46; read 14.46."
+        },
+        {
+          "name": "items_sum",
+          "passed": false,
+          "detail": "Expected 145.00; read 135.00."
+        },
+        {
+          "name": "subtotal_vat_total",
+          "passed": false,
+          "detail": "Expected 135.00; read 145.00."
+        }
+      ],
+      "image_size": [
+        536,
+        736
+      ],
+      "boxes_in_bounds": true
+    },
+    {
+      "sample": "mercury",
+      "seconds": 11.384,
+      "fields": {
+        "merchant": {
+          "expected": "Mercury Drug",
+          "actual": "MERCURY DRUG CORPORATION",
+          "matches": false
+        },
+        "merchant_tin": {
+          "expected": "000-333-444-000",
+          "actual": "000-333-444-000",
+          "matches": true
+        },
+        "receipt_number": {
+          "expected": "88120",
+          "actual": "88120",
+          "matches": true
+        },
+        "receipt_date": {
+          "expected": "2026-11-04",
+          "actual": "2026-11-04",
+          "matches": true
+        },
+        "vatable_sales": {
+          "expected": "547.10",
+          "actual": "547.10",
+          "matches": true
+        },
+        "vat_amount": {
+          "expected": "65.65",
+          "actual": "65.65",
+          "matches": true
+        },
+        "total": {
+          "expected": "612.75",
+          "actual": "612.75",
+          "matches": true
+        }
+      },
+      "items": 2,
+      "checks": [
+        {
+          "name": "vat_math",
+          "passed": true,
+          "detail": "Expected 65.65; read 65.65."
+        },
+        {
+          "name": "items_sum",
+          "passed": true,
+          "detail": "Expected 612.75; read 612.75."
+        },
+        {
+          "name": "subtotal_vat_total",
+          "passed": true,
+          "detail": "Expected 612.75; read 612.75."
+        }
+      ],
+      "image_size": [
+        536,
+        664
+      ],
+      "boxes_in_bounds": true
+    },
+    {
+      "sample": "petron",
+      "seconds": 8.862,
+      "fields": {
+        "merchant": {
+          "expected": "Petron Katipunan",
+          "actual": "PETRON KATIPUNAN",
+          "matches": true
+        },
+        "merchant_tin": {
+          "expected": "000-111-222-000",
+          "actual": "000-111-222-000",
+          "matches": true
+        },
+        "receipt_number": {
+          "expected": "120-55",
+          "actual": "120-55",
+          "matches": true
+        },
+        "receipt_date": {
+          "expected": "2026-11-02",
+          "actual": "2026-11-02",
+          "matches": true
+        },
+        "vatable_sales": {
+          "expected": "1785.71",
+          "actual": "1785.71",
+          "matches": true
+        },
+        "vat_amount": {
+          "expected": "214.29",
+          "actual": "214.29",
+          "matches": true
+        },
+        "total": {
+          "expected": "2000.00",
+          "actual": "2000.00",
+          "matches": true
+        }
+      },
+      "items": 1,
+      "checks": [
+        {
+          "name": "vat_math",
+          "passed": true,
+          "detail": "Expected 214.29; read 214.29."
+        },
+        {
+          "name": "items_sum",
+          "passed": true,
+          "detail": "Expected 2000.00; read 2000.00."
+        },
+        {
+          "name": "subtotal_vat_total",
+          "passed": true,
+          "detail": "Expected 2000.00; read 2000.00."
+        }
+      ],
+      "image_size": [
+        536,
+        628
+      ],
+      "boxes_in_bounds": true
+    }
+  ]
+}

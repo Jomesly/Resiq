@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "resiq-backend"
+version = "0.1.0"
+description = "Receipt processing and expense journal API"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+  "sqlalchemy>=2.0.36,<2.1", "psycopg[binary]>=3.2,<4",
+  "alembic>=1.14,<2", "pydantic-settings>=2.7,<3", "python-multipart>=0.0.20,<1",
+  "pillow>=11,<13", "pillow-heif>=0.21,<2", "opencv-contrib-python==4.10.0.84",
+  "numpy>=1.26,<2.4", "pytesseract>=0.3.13,<0.4",
+]
+[project.optional-dependencies]
+paddle = ["paddleocr==3.7.0", "paddlepaddle==3.3.1"]
+s3 = ["boto3>=1.35,<2"]
+dev = ["pytest>=8.3,<10", "httpx>=0.28,<1", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["ocr: invokes a real OCR engine"]
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
