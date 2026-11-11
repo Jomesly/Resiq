@@ -11,9 +11,24 @@ from decimal import Decimal, InvalidOperation
 from app.dates import in_receipt_window, receipt_date, today_manila
 from app.schemas import Check, Extraction, FieldValue, LineItemCandidate, OcrLine
 
+# Spaces and commas count only as thousands separators, so "Points : 0.15" misread as
+# "Points 8 0.15" yields 0.15 instead of joining the misread colon into 80.15.
 AMOUNT = re.compile(
-    r"(?<![\w.])(?:-\s*)?(?:PHP|P|₱)?\s*-?\s*\d[\d,OolI ]*\.[\dOoIl]{2}(?![\d.])", re.I
+    r"(?<![\w.])(?:-\s*)?(?:PHP|P|₱)?\s*-?\s*"
+    r"(?:\d[\dOolI]{0,2}(?:[, ][\dOolI]{3})+|\d[\dOolI]*)\.[\dOoIl]{2}(?![\d.])",
+    re.I,
 )
+# Loyalty programs (SM Advantage, Go Rewards, Suki, Perks, ...) print points and card balances
+# that are not money on this receipt. A bare "point" stays allowed for products like "POINT PEN".
+LOYALTY = re.compile(
+    r"\b(?:points|pts|rewards?|perks|suki|advantage|loyalty|voucher|stamps)\b"
+    r"|\bpoints?\s+(?:earned|redeemed|balance|bal|used)\b"
+    r"|\b(?:earned|redeemed|available|current|previous|remaining)\s+(?:points?|balance|bal)\b"
+    r"|\bcard\s+(?:number|no\.?|expiry|balance|holder)\b|\bcustomer\s+name\b",
+    re.I,
+)
+SEPARATOR = re.compile(r"^[\s*=\-_~#.]{5,}$")
+ZERO_RATED = re.compile(r"\bzero[ -]?rated\b", re.I)
 SUMMARY = re.compile(
     r"\b(total|subtotal|vat|vatable|exempt|cash|change|tender|payment|discount|amount due|balance|sales|tax)\b",
     re.I,
@@ -97,11 +112,37 @@ def quantity_row(row: OcrLine) -> tuple[str, str] | None:
     return (prefix[1], unit) if unit is not None else None
 
 
+def choose_total(
+    candidates: list[tuple[int, str, OcrLine]], result: Extraction, zero_rated: Decimal
+) -> FieldValue:
+    """Prefer the strongest payable label; among equals, the amount the receipt itself agrees with."""
+    best_rank = max(rank for rank, _, _ in candidates)
+    best = [c for c in candidates if c[0] == best_rank]
+    expected: list[Decimal] = []
+    if result.vatable_sales.value is not None and result.vat_amount.value is not None:
+        expected.append(
+            Decimal(result.vatable_sales.value)
+            + Decimal(result.vat_amount.value)
+            + Decimal(result.vat_exempt.value or "0")
+            + zero_rated
+        )
+    if result.line_items:
+        expected.append(sum(Decimal(item.amount) for item in result.line_items))
+    for _, amount, row in best:
+        if any(abs(Decimal(amount) - value) <= Decimal(".05") for value in expected):
+            return evidence(amount, row)
+    _, amount, row = best[-1]
+    return evidence(amount, row)
+
+
 def extract(lines: list[OcrLine], engine: str) -> Extraction:
-    result = Extraction(engine_version=engine + "/rules-2")
-    total_rank = -1
+    result = Extraction(engine_version=engine + "/rules-3")
     rows = group_rows(lines)
     used_quantity_rows: set[int] = set()
+    total_candidates: list[tuple[int, str, OcrLine]] = []
+    zero_rated = Decimal("0")
+    in_loyalty_block = False
+    tin_from_vat_reg = False
     for index, row in enumerate(rows):
         text = row.text.strip()
         if (
@@ -115,13 +156,25 @@ def extract(lines: list[OcrLine], engine: str) -> Extraction:
             and parse_amount(text) is None
         ):
             result.merchant = evidence(text, row, 0.8)
+        if SEPARATOR.match(text):
+            in_loyalty_block = False
+            continue
+        if LOYALTY.search(text):
+            # A loyalty header without an amount opens a block that lasts until the next separator.
+            in_loyalty_block = in_loyalty_block or parse_amount(text) is None
+            continue
+        if in_loyalty_block:
+            continue
         tin = re.search(
             r"\b(?:TIN|T\.I\.N\.?)\s*[:#]?\s*(\d{3}[ -]?\d{3}[ -]?\d{3}(?:[ -]?\d{3,5})?)",
             text,
             re.I,
         )
-        if tin:
+        is_vat_reg = bool(re.search(r"\bvat\s*reg", text, re.I))
+        if tin and (result.merchant_tin.value is None or (is_vat_reg and not tin_from_vat_reg)):
+            # The store's VAT-registered TIN comes first; later TINs belong to the POS supplier.
             result.merchant_tin = evidence(tin[1], row)
+            tin_from_vat_reg = is_vat_reg
         number = re.search(
             r"\b(?:O\.?R\.?|SI|invoice|receipt)\s*(?:no\.?|number|#)\s*[:#]?\s*([A-Z0-9-]+)",
             text,
@@ -142,6 +195,9 @@ def extract(lines: list[OcrLine], engine: str) -> Extraction:
         amount = parse_amount(text)
         if amount is None:
             continue
+        if ZERO_RATED.search(text):
+            zero_rated = Decimal(amount)
+            continue
         matched = False
         for field, pattern in LABELS.items():
             if re.search(pattern, text, re.I):
@@ -161,15 +217,15 @@ def extract(lines: list[OcrLine], engine: str) -> Extraction:
                         )
                         else 1
                     )
-                    if rank < total_rank:
-                        matched = True
-                        break
-                    total_rank = rank
+                    total_candidates.append((rank, amount, row))
+                    matched = True
+                    break
                 setattr(result, field, evidence(amount, row))
                 matched = True
                 break
         if (
             matched
+            or total_candidates  # nothing printed below the payable total is a purchased item
             or SUMMARY.search(text)
             or re.search(r"\b(TIN|date|time|no\.|telephone)\b", text, re.I)
         ):
@@ -218,6 +274,8 @@ def extract(lines: list[OcrLine], engine: str) -> Extraction:
                     box=item_box,
                 )
             )
+    if total_candidates:
+        result.total = choose_total(total_candidates, result, zero_rated)
     merchant = result.merchant.value or ""
     for category, pattern in [
         ("Food & Drinks", r"kapihan|cafe|coffee|restaurant|jollibee|mcdonald|food"),
@@ -262,7 +320,8 @@ def extract(lines: list[OcrLine], engine: str) -> Extraction:
                 total,
                 Decimal(result.vatable_sales.value)
                 + Decimal(result.vat_amount.value)
-                + Decimal(result.vat_exempt.value or "0"),
+                + Decimal(result.vat_exempt.value or "0")
+                + zero_rated,
                 ".05",
             )
     for field in ("merchant", "receipt_date", "total"):
