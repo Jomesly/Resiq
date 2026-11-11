@@ -1,0 +1,4 @@
+date,merchant,tin,receipt_number,category,vatable_sales,vat_amount,vat_exempt,total,status
+2026-11-02,Petron Katipunan,000-111-222-000,120-55,Fuel,1785.71,214.29,,2000.00,verified
+2026-11-04,Mercury Drug,000-333-444-000,88120,Health,547.10,65.65,,612.75,verified
+2026-11-09,Kapihan sa Kanto,000-482-117-000,0004417,Food & Drinks,120.54,14.46,,135.00,verified

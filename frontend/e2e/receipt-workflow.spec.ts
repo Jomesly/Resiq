@@ -1,0 +1,87 @@
+import { readFile } from "node:fs/promises";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+
+test("corrects the sample, saves it, and exports the verified journal", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "From resibo to columnar book." })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  await page.getByRole("button", { name: "Try a sample receipt" }).click();
+  await expect(page.getByRole("heading", { name: "Kapihan sa Kanto" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Does not balance by ₱10.00.", { exact: true })).toBeVisible();
+  await expect(page.locator(".closing")).toHaveCount(0);
+  const total = page.locator("[data-entry-field=total]:visible");
+  await expect(total).toHaveValue("145.00");
+
+  await page.getByRole("tab", { name: "As taken" }).click();
+  await expect(page.getByRole("button", { name: "Focus Total" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Read", exact: true }).click();
+  await page.getByRole("button", { name: "Focus Total" }).click();
+  await expect(total).toBeFocused();
+  await total.fill("135");
+  await total.press("Tab");
+  await expect(total).toHaveValue("135.00");
+  await expect(total).toHaveClass(/is-edited/);
+  await expect(page.getByText("Ready to save")).toBeVisible();
+  await expect(page.locator(".closing")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.setViewportSize({ width: 320, height: 800 });
+  const widths = await page.evaluate(() => [document.documentElement.clientWidth, document.documentElement.scrollWidth]);
+  expect(widths[0]).toBe(widths[1]);
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await page.getByRole("button", { name: "Save to journal" }).click();
+  await expect(page.getByRole("heading", { name: "Saved to November" })).toBeVisible();
+  await page.getByRole("link", { name: "Open journal" }).click();
+  await expect(page).toHaveURL(/\/journal\?month=2026-11$/);
+  await expect(page.getByRole("link", { name: "Kapihan sa Kanto" })).toBeVisible();
+  await page.getByRole("button", { name: "Show as table" }).click();
+  await expect(page.getByRole("row", { name: "Food & Drinks 1 ₱135.00" })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export November as CSV" }).click();
+  const csv = await downloading;
+  expect(csv.suggestedFilename()).toBe("resiq-2026-11.csv");
+  expect(await readFile(await csv.path(), "utf8")).toContain("2026-11-09,Kapihan sa Kanto,000-482-117-000,0004417,Food & Drinks,120.54,14.46,,135.00,verified");
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Kapihan sa Kanto" })).toBeVisible();
+});
+
+test("rejects a PDF and keeps an uploaded image available for manual entry at 375px", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/upload");
+  const picker = page.locator("input[type=file]");
+  await picker.setInputFiles({ name: "invoice.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF") });
+  await expect(page.getByRole("alert").filter({ hasText: "Only JPG" })).toBeVisible();
+  await picker.setInputFiles("public/samples/hero-receipt.png");
+  await page.getByRole("link", { name: "Open hero-receipt.png" }).click();
+  await expect(page.getByRole("heading", { name: "Could not read this receipt" })).toBeVisible({ timeout: 15_000 });
+  await page.reload();
+  await expect(page.getByRole("img", { name: "Receipt photo" })).toBeVisible();
+  await page.getByRole("button", { name: "Enter it by hand" }).click();
+  await page.getByRole("button", { name: "Save to journal" }).click();
+  await expect(page.locator(".form-error")).toBeFocused();
+  await page.getByLabel("Merchant", { exact: true }).fill("Local market");
+  await page.getByLabel("Date", { exact: true }).fill("2026-11-10");
+  await page.getByLabel("Total", { exact: true }).fill("150.00");
+  await page.getByRole("button", { name: "Add a line" }).click();
+  await page.getByLabel("Particulars, line 1").fill("Produce");
+  await page.getByLabel("Qty, line 1").fill("2");
+  await page.getByLabel("Unit price, line 1").fill("75");
+  await page.getByLabel("Unit price, line 1").press("Tab");
+  await expect(page.getByLabel("Amount, line 1", { exact: true })).toHaveValue("150.00");
+  await expect(page.getByText("Ready to save")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
+  await page.getByRole("button", { name: "Save to journal" }).click();
+  await expect(page.getByRole("heading", { name: "Saved to November" })).toBeVisible();
+  await page.getByRole("link", { name: "Receipts", exact: true }).first().click();
+  await page.getByText("Verified", { exact: true }).first().click();
+  await expect(page).toHaveURL(/status=verified/);
+  await expect(page.getByRole("link", { name: "Local market" })).toBeVisible();
+  await page.getByRole("link", { name: "Local market" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete receipt" }).click();
+  await expect(page.getByRole("heading", { name: "No receipts yet." })).toBeVisible();
+});

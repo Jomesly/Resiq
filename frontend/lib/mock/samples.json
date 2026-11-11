@@ -1,0 +1,108 @@
+[
+  {
+    "key": "kapihan",
+    "blurry": true,
+    "lines": [
+      { "c": "KAPIHAN SA KANTO", "b": true },
+      { "c": "KATIPUNAN AVE, QUEZON CITY" },
+      { "c": "VAT REG TIN 000-482-117-000" },
+      { "c": "OR NO. 0004417" },
+      { "c": "11/09/2026 12:41 PM" },
+      {},
+      { "t": " 2 @ 45.00" },
+      { "t": "KAPE BARAKO", "r": "90.00" },
+      { "t": "ENSAYMADA", "r": "45.00" },
+      {},
+      { "t": "VATABLE SALES", "r": "120.54" },
+      { "t": "VAT 12%", "r": "14.46" },
+      { "t": "TOTAL", "r": "P145.0O", "b": true },
+      { "t": "CASH", "r": "200.00" },
+      { "t": "CHANGE", "r": "55.00" },
+      {},
+      { "c": "THIS SERVES AS AN" },
+      { "c": "OFFICIAL RECEIPT" }
+    ],
+    "fields": {
+      "merchant": { "line": 0, "value": "Kapihan sa Kanto", "conf": 0.86 },
+      "merchant_tin": { "line": 2, "value": "000-482-117-000", "conf": 0.94 },
+      "receipt_number": { "line": 3, "value": "0004417", "conf": 0.9 },
+      "receipt_date": { "line": 4, "value": "2026-11-09", "conf": 0.9 },
+      "vatable_sales": { "line": 10, "value": "120.54", "conf": 0.92 },
+      "vat_amount": { "line": 11, "value": "14.46", "conf": 0.92 },
+      "total": { "line": 12, "value": "145.00", "conf": 0.42 }
+    },
+    "items": [
+      { "line": 7, "description": "Kape barako", "quantity": "2", "unit_price": "45.00", "amount": "90.00" },
+      { "line": 8, "description": "Ensaymada", "quantity": "1", "unit_price": "45.00", "amount": "45.00" }
+    ],
+    "category": "Food & Drinks"
+  },
+  {
+    "key": "mercury",
+    "lines": [
+      { "c": "MERCURY DRUG CORPORATION", "b": true },
+      { "c": "ANONAS, QUEZON CITY" },
+      { "c": "VAT REG TIN 000-333-444-000" },
+      { "c": "SI NO. 88120" },
+      { "c": "11/04/2026 03:12 PM" },
+      {},
+      { "t": "BIOGESIC 500MG 10S", "r": "85.00" },
+      { "t": "VITAMIN C 500MG 30S", "r": "527.75" },
+      {},
+      { "t": "VATABLE SALES", "r": "547.10" },
+      { "t": "VAT 12%", "r": "65.65" },
+      { "t": "TOTAL", "r": "612.75", "b": true },
+      { "t": "CASH", "r": "1,000.00" },
+      { "t": "CHANGE", "r": "387.25" },
+      {},
+      { "c": "THANK YOU, COME AGAIN" }
+    ],
+    "fields": {
+      "merchant": { "line": 0, "value": "Mercury Drug", "conf": 0.95 },
+      "merchant_tin": { "line": 2, "value": "000-333-444-000", "conf": 0.95 },
+      "receipt_number": { "line": 3, "value": "88120", "conf": 0.88 },
+      "receipt_date": { "line": 4, "value": "2026-11-04", "conf": 0.55 },
+      "vatable_sales": { "line": 9, "value": "547.10", "conf": 0.93 },
+      "vat_amount": { "line": 10, "value": "65.65", "conf": 0.93 },
+      "total": { "line": 11, "value": "612.75", "conf": 0.95 }
+    },
+    "items": [
+      { "line": 6, "description": "Biogesic 500mg 10s", "quantity": null, "unit_price": null, "amount": "85.00" },
+      { "line": 7, "description": "Vitamin C 500mg 30s", "quantity": null, "unit_price": null, "amount": "527.75" }
+    ],
+    "category": "Health"
+  },
+  {
+    "key": "petron",
+    "lines": [
+      { "c": "PETRON KATIPUNAN", "b": true },
+      { "c": "KATIPUNAN AVE, QUEZON CITY" },
+      { "c": "VAT REG TIN 000-111-222-000" },
+      { "c": "OR NO. 120-55" },
+      { "c": "11/02/2026 07:58 AM" },
+      {},
+      { "t": "XCS GASOLINE", "r": "2,000.00" },
+      {},
+      { "t": "VATABLE SALES", "r": "1,785.71" },
+      { "t": "VAT 12%", "r": "214.29" },
+      { "t": "TOTAL", "r": "2,000.00", "b": true },
+      { "t": "CASH", "r": "2,000.00" },
+      {},
+      { "c": "THIS SERVES AS AN" },
+      { "c": "OFFICIAL RECEIPT" }
+    ],
+    "fields": {
+      "merchant": { "line": 0, "value": "Petron Katipunan", "conf": 0.9 },
+      "merchant_tin": { "line": 2, "value": "000-111-222-000", "conf": 0.95 },
+      "receipt_number": { "line": 3, "value": "120-55", "conf": 0.85 },
+      "receipt_date": { "line": 4, "value": "2026-11-02", "conf": 0.92 },
+      "vatable_sales": { "line": 8, "value": "1785.71", "conf": 0.9 },
+      "vat_amount": { "line": 9, "value": "214.29", "conf": 0.9 },
+      "total": { "line": 10, "value": "2000.00", "conf": 0.95 }
+    },
+    "items": [
+      { "line": 6, "description": "XCS gasoline", "quantity": null, "unit_price": null, "amount": "2000.00" }
+    ],
+    "category": "Fuel"
+  }
+]
