@@ -1,0 +1,102 @@
+{
+  "dataset": "synthetic regression fixtures (not real-world accuracy)",
+  "engine": "tesseract",
+  "startup_seconds": 5.129,
+  "results": [
+    {
+      "case": 1,
+      "seconds": 1.581,
+      "fields": {
+        "merchant": {
+          "matches": true
+        },
+        "merchant_tin": {
+          "matches": true
+        },
+        "receipt_number": {
+          "matches": true
+        },
+        "receipt_date": {
+          "matches": true
+        },
+        "vatable_sales": {
+          "matches": true
+        },
+        "vat_amount": {
+          "matches": true
+        },
+        "total": {
+          "matches": true
+        }
+      },
+      "items_match": null,
+      "boxes_in_bounds": true
+    },
+    {
+      "case": 2,
+      "seconds": 1.097,
+      "fields": {
+        "merchant": {
+          "matches": false
+        },
+        "merchant_tin": {
+          "matches": true
+        },
+        "receipt_number": {
+          "matches": true
+        },
+        "receipt_date": {
+          "matches": true
+        },
+        "vatable_sales": {
+          "matches": true
+        },
+        "vat_amount": {
+          "matches": true
+        },
+        "total": {
+          "matches": true
+        }
+      },
+      "items_match": null,
+      "boxes_in_bounds": true
+    },
+    {
+      "case": 3,
+      "seconds": 0.675,
+      "fields": {
+        "merchant": {
+          "matches": true
+        },
+        "merchant_tin": {
+          "matches": true
+        },
+        "receipt_number": {
+          "matches": true
+        },
+        "receipt_date": {
+          "matches": true
+        },
+        "vatable_sales": {
+          "matches": false
+        },
+        "vat_amount": {
+          "matches": true
+        },
+        "total": {
+          "matches": true
+        }
+      },
+      "items_match": null,
+      "boxes_in_bounds": true
+    }
+  ],
+  "gate": {
+    "passed": true,
+    "failures": [],
+    "cases": 3,
+    "field_accuracy": 0.9047619047619048,
+    "total_accuracy": 1.0,
+    "item_receipt_accuracy": null
+  }
+}

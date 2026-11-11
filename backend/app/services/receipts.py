@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy.orm import Session, selectinload
 
+from app.maintenance import drain_cleanup, enqueue_cleanup
 from app.models import LineItem, Receipt, Workspace
 from app.runtime import Runtime
 from app.schemas import (
@@ -26,6 +27,7 @@ from app.schemas import (
     UploadResult,
 )
 from app.services.access import check_rate
+from app.services.budgets import admission_lock, receipt_budget
 from app.vision.io import UnsupportedImageError, jpeg, load_image
 
 
@@ -141,30 +143,15 @@ class ReceiptService:
         original_key, preview_key = f"{prefix}/original.{extension}", f"{prefix}/preview.jpg"
         try:
             with self.runtime.db.session() as session:
-                session.execute(
-                    select(Workspace.id).where(Workspace.id == workspace_id).with_for_update()
+                admission_lock(session)
+                workspace = session.scalar(
+                    select(Workspace).where(Workspace.id == workspace_id).with_for_update()
                 )
-                count = session.scalar(
-                    select(func.count())
-                    .select_from(Receipt)
-                    .where(Receipt.workspace_id == workspace_id)
-                )
-                pending = session.scalar(
-                    select(func.count())
-                    .select_from(Receipt)
-                    .where(
-                        Receipt.workspace_id == workspace_id,
-                        Receipt.status.in_(["queued", "processing"]),
-                    )
-                )
-                if (
-                    count >= settings.max_receipts_per_workspace
-                    or pending >= settings.max_pending_per_workspace
-                ):
+                if settings.environment == "production" and not workspace.recovery_hash:
                     raise HTTPException(
-                        429,
-                        "This workspace has reached its receipt or pending-upload limit. Finish or remove receipts before uploading more.",
+                        409, "Save a recovery code in Workspace before uploading receipts."
                     )
+                receipt_budget(session, settings, workspace_id, upload=True)
                 self.runtime.store.put(original_key, bytes(data))
                 self.runtime.store.put(preview_key, jpeg(image))
                 session.add(
@@ -294,27 +281,34 @@ class ReceiptService:
                 )
                 for index, item in enumerate(update.line_items)
             ]
-            row.status, row.verified_at, row.error = "verified", datetime.now(UTC), None
+            row.status, row.verified_at, row.error = (
+                "verified",
+                session.scalar(select(func.clock_timestamp())),
+                None,
+            )
             session.commit()
             return receipt_detail(self.runtime, row)
 
     def reprocess(self, workspace_id: UUID, receipt_id: UUID, force: bool) -> UploadResult:
         check_rate(self.runtime, "reprocess", str(workspace_id), 20)
         with self.runtime.db.session() as session:
+            admission_lock(session)
             row = self.owned(session, workspace_id, receipt_id, lock=True)
             if row.status in ("queued", "processing"):
                 raise HTTPException(409, "This receipt is already being read.")
             if row.status == "verified" and not force:
                 raise HTTPException(409, "Confirm before reading a saved receipt again.")
+            receipt_budget(session, self.runtime.settings, workspace_id, upload=False)
             row.status, row.attempts, row.error = "queued", 0, None
             row.lease_token = row.lease_expires_at = row.verified_at = None
-            row.available_at = datetime.now(UTC)
+            row.available_at = session.scalar(select(func.clock_timestamp()))
             session.commit()
             return UploadResult(id=row.id, status=row.status)
 
     def delete(self, workspace_id: UUID, receipt_id: UUID) -> None:
         with self.runtime.db.session() as session:
             row = self.owned(session, workspace_id, receipt_id, lock=True)
-            self.runtime.store.delete_prefix(f"{workspace_id}/{receipt_id}")
+            enqueue_cleanup(session, f"{workspace_id}/{receipt_id}")
             session.delete(row)
             session.commit()
+        drain_cleanup(self.runtime)

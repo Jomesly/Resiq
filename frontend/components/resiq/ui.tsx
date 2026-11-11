@@ -34,6 +34,7 @@ export function TopBar({ current }: { current?: "receipts" | "journal" }) {
     <nav aria-label="Main">
       <Link href="/receipts" aria-current={current === "receipts" ? "page" : undefined}>Receipts</Link>
       <Link href="/journal" aria-current={current === "journal" ? "page" : undefined}>Journal</Link>
+      <Link href="/workspace">Workspace</Link>
     </nav>
     <ButtonLink href="/upload">Upload <span className="wide-label">receipts</span></ButtonLink>
   </div></header>;

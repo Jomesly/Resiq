@@ -1,0 +1,122 @@
+name: resiq-production
+x-backend-env: &backend-env
+  ENVIRONMENT: production
+  DATABASE_URL: postgresql+psycopg://resiq:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/resiq
+  SIGNING_SECRET: ${SIGNING_SECRET:?Set SIGNING_SECRET}
+  OPERATIONS_TOKEN: ${OPERATIONS_TOKEN:?Set OPERATIONS_TOKEN}
+  PUBLIC_API_URL: https://${DOMAIN:?Set DOMAIN}
+  CORS_ORIGINS: '["https://${DOMAIN}"]'
+  STORAGE_ROOT: /data
+  OCR_ENGINE: ${OCR_ENGINE:-paddle}
+  MAX_WORKSPACES: ${MAX_WORKSPACES:-1000}
+  MAX_RECEIPTS_TOTAL: ${MAX_RECEIPTS_TOTAL:-10000}
+  MAX_PENDING_TOTAL: ${MAX_PENDING_TOTAL:-100}
+x-runtime: &runtime
+  init: true
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: resiq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: resiq
+    volumes: ["database:/var/lib/postgresql/data"]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resiq -d resiq"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 1g
+  migrate:
+    build: {context: ../backend, target: base}
+    image: resiq-api:${RELEASE_TAG:-local}
+    environment: *backend-env
+    command: ["alembic", "upgrade", "head"]
+    networks: [backend]
+    depends_on: {db: {condition: service_healthy}}
+  api:
+    <<: *runtime
+    image: resiq-api:${RELEASE_TAG:-local}
+    environment:
+      <<: *backend-env
+      # API has no host port; only trusted services share this network.
+      FORWARDED_ALLOW_IPS: '*'
+    volumes: ["receipts:/data"]
+    networks: [backend]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+  worker:
+    <<: *runtime
+    build: {context: ../backend, target: '${WORKER_TARGET:-paddle}'}
+    image: resiq-worker:${RELEASE_TAG:-local}
+    environment: *backend-env
+    command: ["python", "-m", "app.worker"]
+    volumes: ["receipts:/data"]
+    networks: [backend]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 256
+    stop_grace_period: 110s
+  maintenance:
+    <<: *runtime
+    image: resiq-api:${RELEASE_TAG:-local}
+    environment: *backend-env
+    command: ["python", "-m", "app.maintenance"]
+    volumes: ["receipts:/data"]
+    networks: [backend]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    mem_limit: 512m
+  frontend:
+    <<: *runtime
+    build:
+      context: ../frontend
+      args: {NEXT_PUBLIC_API_URL: 'https://${DOMAIN:?Set DOMAIN}'}
+    image: resiq-frontend:${RELEASE_TAG:-local}
+    networks: [backend]
+    mem_limit: 512m
+    pids_limit: 128
+  gateway:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment: {EDGE_SUBNET: '${EDGE_SUBNET:-172.30.71.0/24}'}
+    volumes: ["./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro"]
+    networks: [edge, backend]
+    depends_on: [api, frontend]
+    mem_limit: 128m
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment: {DOMAIN: '${DOMAIN:?Set DOMAIN}'}
+    ports: ["80:80", "443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy-data:/data", "caddy-config:/config"]
+    networks: [edge]
+    depends_on: [gateway]
+    mem_limit: 256m
+networks:
+  backend:
+    internal: true
+  edge:
+    ipam:
+      config: [{subnet: '${EDGE_SUBNET:-172.30.71.0/24}'}]
+volumes:
+  database:
+  receipts:
+  caddy-data:
+  caddy-config:

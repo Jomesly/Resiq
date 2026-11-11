@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import and_, func, or_, select, update
 
+from app.maintenance import drain_cleanup, enqueue_cleanup
 from app.models import LineItem, Receipt
 from app.runtime import Runtime
 from app.schemas import MONEY_FIELDS, TEXT_FIELDS
@@ -104,6 +105,8 @@ class JobQueue:
                 ):
                     return False
                 keys = {}
+                if row.processed_key and "/attempts/" in row.processed_key:
+                    enqueue_cleanup(session, row.processed_key.rsplit("/", 1)[0])
                 for variant, data in result.images.items():
                     key = f"{prefix}/{variant}.jpg"
                     self.runtime.store.put(key, data)
@@ -141,7 +144,8 @@ class JobQueue:
                 )
                 row.lease_token = row.lease_expires_at = None
                 row.processed_at = now
+            drain_cleanup(self.runtime)
             return True
         except Exception:
-            self.runtime.store.delete_prefix(prefix)
+            # Crash/failed writes are collected by the age-gated orphan sweep.
             raise

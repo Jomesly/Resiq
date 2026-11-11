@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Button, Chip, ClosingRule, Skeleton, StatusChip, TopBar } from "@/components/resiq/ui";
 
 export const metadata: Metadata = { title: "Styleguide" };
 
 export default function Styleguide() {
+  if (process.env.NODE_ENV === "production") notFound();
   return <><TopBar /><main id="main" className="app-container screen styleguide">
     <div className="screen-heading"><div><h1>The Columnar Book</h1><p>Resiq’s type, controls and receipt states.</p></div></div>
     <section><h2>Actions</h2><div className="button-group">

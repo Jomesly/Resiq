@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = "http://localhost:3000";
 
 export default defineConfig({
+  outputDir: "test-results/demo",
   testDir: "./e2e",
   use: { ...devices["Desktop Chrome"], baseURL, trace: "retain-on-failure" },
   webServer: {

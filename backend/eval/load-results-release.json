@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "uploaded": 8,
+  "completed": 8,
+  "concurrency": 2,
+  "upload_p95_seconds": 0.20299999999406282,
+  "elapsed_seconds": 57.97,
+  "errors": [],
+  "scope": "bounded synthetic load smoke; not production capacity certification"
+}

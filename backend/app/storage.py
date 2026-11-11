@@ -3,6 +3,8 @@ import hmac
 import os
 import shutil
 import time
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 from uuid import UUID, uuid4
@@ -28,6 +30,8 @@ class BlobStore(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
     def get(self, key: str) -> bytes: ...
     def delete_prefix(self, prefix: str) -> None: ...
+    def objects(self) -> Iterator[tuple[str, datetime]]: ...
+    def delete(self, key: str) -> None: ...
 
 
 class LocalBlobStore:
@@ -61,13 +65,38 @@ class LocalBlobStore:
         elif target.exists():
             target.unlink()
 
+    def objects(self):
+        for directory, _, files in os.walk(self.root, followlinks=False):
+            for name in files:
+                path = Path(directory) / name
+                if path.is_symlink():
+                    continue
+                try:
+                    yield (
+                        path.relative_to(self.root).as_posix(),
+                        datetime.fromtimestamp(path.stat().st_mtime, UTC),
+                    )
+                except FileNotFoundError:
+                    continue
+
+    def delete(self, key: str) -> None:
+        self.path(key).unlink(missing_ok=True)
+
 
 class S3BlobStore:
     def __init__(self, settings: Settings):
         import boto3
+        from botocore.config import Config
 
         self.client = boto3.client(
-            "s3", endpoint_url=settings.s3_endpoint_url, region_name=settings.s3_region
+            "s3",
+            endpoint_url=settings.s3_endpoint_url,
+            region_name=settings.s3_region,
+            config=Config(
+                connect_timeout=5,
+                read_timeout=30,
+                retries={"mode": "standard", "total_max_attempts": 2},
+            ),
         )
         self.bucket = settings.s3_bucket
 
@@ -93,6 +122,14 @@ class S3BlobStore:
                 result = self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys})
                 if result.get("Errors"):
                     raise OSError("Could not remove all receipt images.")
+
+    def objects(self):
+        for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket):
+            for item in page.get("Contents", []):
+                yield item["Key"], item["LastModified"]
+
+    def delete(self, key: str) -> None:
+        self.client.delete_object(Bucket=self.bucket, Key=valid_key(key))
 
 
 def get_store(settings: Settings) -> BlobStore:

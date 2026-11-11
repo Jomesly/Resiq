@@ -218,3 +218,13 @@ class MonthlySummary(BaseModel):
 
 class WorkspaceToken(BaseModel):
     token: str
+
+
+class RecoveryCode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recovery_code: str = Field(min_length=43, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class WorkspaceInfo(BaseModel):
+    recovery_enabled: bool
+    recovery_required: bool

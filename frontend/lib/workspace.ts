@@ -1,6 +1,11 @@
 const keyFor = (base: string) => "resiq.token:" + base;
 const pending = new Map<string, Promise<string>>();
 
+export const storedToken = (base: string) => typeof localStorage === "undefined" ? null : localStorage.getItem(keyFor(base));
+export function setToken(base: string, token: string): void {
+  localStorage.setItem(keyFor(base), token);
+}
+
 export function clearToken(base: string): void {
   pending.delete(base);
   if (typeof localStorage !== "undefined") localStorage.removeItem(keyFor(base));
@@ -16,7 +21,10 @@ export function getToken(base: string): Promise<string> {
         if (!res.ok) throw new Error(`Could not start a workspace (${res.status})`);
         const { token } = (await res.json()) as { token: string };
         if (typeof token !== "string" || !token) throw new Error("The workspace response was invalid.");
-        localStorage.setItem(keyFor(base), token);
+        // Recovery can finish while this request is in flight. Preserve its token.
+        const current = storedToken(base);
+        if (current) return current;
+        setToken(base, token);
         return token;
       })
       .finally(() => {

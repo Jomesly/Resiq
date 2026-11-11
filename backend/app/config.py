@@ -1,9 +1,11 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -31,6 +33,15 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     max_receipts_per_workspace: int = Field(default=1000, ge=1)
     max_pending_per_workspace: int = Field(default=30, ge=1)
+    max_workspaces: int = Field(default=1000, ge=1)
+    max_receipts_total: int = Field(default=10000, ge=1)
+    max_pending_total: int = Field(default=100, ge=1)
+    requests_per_ip_per_minute: int = Field(default=600, ge=1)
+    requests_per_minute: int = Field(default=6000, ge=1)
+    workspace_creations_per_minute: int = Field(default=30, ge=1)
+    cleanup_grace_s: int = Field(default=86400, ge=3600)
+    maintenance_interval_s: int = Field(default=300, ge=10)
+    operations_token: SecretStr = SecretStr("")
     cpu_threads: int = Field(default=2, ge=1, le=16)
     paddle_det_model: str = "PP-OCRv5_mobile_det"
     paddle_rec_model: str = "en_PP-OCRv5_mobile_rec"
@@ -50,6 +61,40 @@ class Settings(BaseSettings):
                 )
             if not self.public_api_url.startswith("https://"):
                 raise ValueError("PUBLIC_API_URL must use HTTPS in production.")
+            public = urlsplit(self.public_api_url)
+            if (
+                not public.hostname
+                or public.username
+                or public.query
+                or public.fragment
+                or public.path not in ("", "/")
+            ):
+                raise ValueError(
+                    "PUBLIC_API_URL must be an HTTPS origin without credentials or a path."
+                )
+            for origin in self.cors_origins:
+                parsed = urlsplit(origin)
+                if (
+                    parsed.scheme != "https"
+                    or not parsed.hostname
+                    or parsed.username
+                    or parsed.path
+                    or parsed.query
+                    or parsed.fragment
+                    or "*" in origin
+                ):
+                    raise ValueError("Production CORS_ORIGINS must contain exact HTTPS origins.")
+            if not self.cors_origins or not self.rate_limit_enabled:
+                raise ValueError("Production requires CORS origins and rate limits.")
+            password = make_url(self.database_url).password
+            if not password or len(password) < 20 or password == "resiq-local-only":
+                raise ValueError(
+                    "Production requires a private database password of at least 20 characters."
+                )
+            if len(self.operations_token.get_secret_value()) < 32:
+                raise ValueError(
+                    "Production requires an OPERATIONS_TOKEN of at least 32 characters."
+                )
         if self.storage_backend == "s3" and not self.s3_bucket:
             raise ValueError("S3_BUCKET is required for S3 storage.")
         return self

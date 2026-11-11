@@ -14,3 +14,7 @@ playwright-report/
 .pytest_cache/
 .ruff_cache/
 *.tsbuildinfo
+deploy/.env*
+!deploy/.env.example
+backups/
+*.dump

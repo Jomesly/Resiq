@@ -4,7 +4,8 @@ import { useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useDropzone, type FileRejection } from "react-dropzone";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
+import { storedToken } from "@/lib/workspace";
 import { errorText, getReceipt, isReading, uploadReceipt } from "@/lib/receipts";
 import type { ReceiptStatus } from "@/lib/types";
 import { Button, ButtonLink, Chip, StatusChip } from "./resiq/ui";
@@ -54,6 +55,8 @@ export function UploadDropzone({ Hero, className = "" }: {
   const sequence = useRef(0);
   const pending = useRef<{ key: number; file: File; openAfter: boolean }[]>([]);
   const active = useRef(0);
+  const workspace = useQuery({ queryKey: ["workspace"], queryFn: () => storedToken(API_BASE) ? apiFetch<{ recovery_enabled: boolean; recovery_required: boolean }>("/api/workspace") : Promise.resolve(null), enabled: Boolean(API_BASE) });
+  const needsRecovery = workspace.data?.recovery_required && !workspace.data.recovery_enabled;
 
   function change(key: number, fields: Partial<Row>) {
     setRows((old) => old.map((row) => row.key === key ? { ...row, ...fields } : row));
@@ -80,6 +83,7 @@ export function UploadDropzone({ Hero, className = "" }: {
   }
 
   function enqueue(accepted: File[], rejected: FileRejection[], openAfter = false) {
+    if (needsRecovery) { router.push("/workspace"); setSampleBusy(false); return; }
     const next: Row[] = [
       ...accepted.map((file) => ({ key: ++sequence.current, file, progress: 0, error: file.size ? undefined : "This photo is empty. Choose another file." })),
       ...rejected.map((rejection) => ({ key: ++sequence.current, file: rejection.file, progress: 0, error: uploadError(rejection) })),
@@ -110,6 +114,7 @@ export function UploadDropzone({ Hero, className = "" }: {
   }
 
   return <div {...getRootProps({ className: "upload-surface " + className + (isDragActive ? " is-dragging" : "") })}>
+    {API_BASE && !workspace.data?.recovery_enabled && <div className="notice"><p>{needsRecovery ? "Save a recovery code before uploading your receipts." : "Protect your receipts with a recovery code so you can open them from another browser."}</p><ButtonLink href="/workspace">Set up workspace recovery</ButtonLink></div>}
     <input {...getInputProps({ "aria-label": "Choose receipt photos" })} />
     {Hero ? <Hero open={open} trySample={trySample} sampleBusy={sampleBusy} /> : <div className="dropzone">
       <h2>Drop your receipt photos here</h2>

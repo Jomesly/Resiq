@@ -480,3 +480,12 @@ h1, h2, h3 { font-weight: 500; letter-spacing: var(--tracking-display); line-hei
   .filter-fields { grid-template-columns: minmax(0, 1fr); }
   .hero__actions .btn { padding-inline: var(--space-md); }
 }
+/* Recovery controls keep secrets readable without overflowing small screens. */
+.workspace-screen { max-width: 760px; }
+.workspace-panel { margin-block: 2rem; padding-block: 1rem; border-top: 1px solid var(--rule, #ccc); }
+.workspace-panel p { margin-block: 1rem; }
+.workspace-code { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.workspace-code input { min-width: 0; width: 100%; }
+.recovery-confirm { display: flex; gap: .75rem; align-items: baseline; }
+.recovery-confirm input { width: auto; }
+@media (max-width: 420px) { .topbar { flex-wrap: wrap; gap: .75rem; } }

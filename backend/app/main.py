@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -14,6 +15,7 @@ from app.api.routes import router
 from app.config import Settings, get_settings
 from app.db import Database
 from app.runtime import Runtime
+from app.services.access import check_rate
 from app.storage import BlobStore, ImageSigner, get_store
 
 logger = logging.getLogger("resiq.api")
@@ -24,10 +26,15 @@ class UploadBodyLimit:
         self.app, self.limit = app, limit
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        if scope["type"] != "http" or scope["path"] != "/api/receipts" or scope["method"] != "POST":
+        if scope["type"] != "http" or scope["method"] not in ("POST", "PUT", "PATCH"):
             return await self.app(scope, receive, send)
+        limit = (
+            self.limit
+            if scope["path"] == "/api/receipts" and scope["method"] == "POST"
+            else 1_048_576
+        )
         length = dict(scope["headers"]).get(b"content-length", b"0")
-        if length.isdigit() and int(length) > self.limit:
+        if length.isdigit() and int(length) > limit:
             return await JSONResponse({"detail": "This upload is too large."}, status_code=413)(
                 scope, receive, send
             )
@@ -37,7 +44,7 @@ class UploadBodyLimit:
             nonlocal seen
             message = await receive()
             seen += len(message.get("body", b""))
-            if seen > self.limit:
+            if seen > limit:
                 raise HTTPException(413, "This upload is too large.")
             return message
 
@@ -61,7 +68,14 @@ def create_app(
         if database is None:
             db.dispose()
 
-    app = FastAPI(title="Resiq API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="Resiq API",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None if settings.environment == "production" else "/docs",
+        redoc_url=None if settings.environment == "production" else "/redoc",
+        openapi_url=None if settings.environment == "production" else "/openapi.json",
+    )
     app.state.runtime = runtime
     app.add_middleware(UploadBodyLimit, limit=settings.max_upload_bytes + 1_048_576)
     app.add_middleware(
@@ -77,10 +91,27 @@ def create_app(
         request_id = uuid4().hex
         request.state.request_id = request_id
         start = time.monotonic()
-        response = await call_next(request)
+        try:
+            if request.url.path.startswith("/api/"):
+                await run_in_threadpool(
+                    check_rate, runtime, "requests-global", "all", settings.requests_per_minute
+                )
+                await run_in_threadpool(
+                    check_rate,
+                    runtime,
+                    "requests-ip",
+                    request.client.host if request.client else "unknown",
+                    settings.requests_per_ip_per_minute,
+                )
+            response = await call_next(request)
+        except HTTPException as exc:
+            response = JSONResponse(
+                {"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers
+            )
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
-        if request.url.path.startswith("/api/"):
+        response.headers["Referrer-Policy"] = "no-referrer"
+        if request.url.path.startswith(("/api/", "/ops/")):
             response.headers["Cache-Control"] = "no-store"
         logger.info(
             "request id=%s method=%s route=%s status=%s duration_ms=%d",

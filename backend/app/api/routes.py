@@ -1,4 +1,5 @@
-from datetime import UTC, datetime, timedelta
+import hmac
+from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -7,24 +8,44 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, text
 
 from app.api.dependencies import RuntimeDep, WorkspaceDep
-from app.models import Receipt, WorkerHeartbeat
+from app.models import Receipt, WorkerHeartbeat, Workspace
 from app.schemas import (
     JournalList,
     MonthlySummary,
     ReceiptDetail,
     ReceiptList,
     ReceiptUpdate,
+    RecoveryCode,
     Status,
     UploadResult,
+    WorkspaceInfo,
     WorkspaceToken,
 )
-from app.services.access import create_workspace
+from app.services.access import (
+    confirm_recovery,
+    create_workspace,
+    prepare_recovery,
+    recover_workspace,
+    rotate_token,
+)
 from app.services.journal import JournalService
 from app.services.receipts import ReceiptService
 
 router = APIRouter()
 Limit = Annotated[int, Query(ge=1, le=100)]
 Month = Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+
+
+@router.get("/ops/status")
+def operational_status(request: Request, runtime: RuntimeDep):
+    from app.operations import status
+
+    expected = runtime.settings.operations_token.get_secret_value()
+    if not expected or not hmac.compare_digest(
+        request.headers.get("authorization", ""), "Bearer " + expected
+    ):
+        raise HTTPException(404, "Not found.")
+    return status(runtime)
 
 
 @router.get("/healthz", response_model=dict[str, str])
@@ -41,8 +62,9 @@ def ready(runtime: RuntimeDep):
                 select(func.count())
                 .select_from(WorkerHeartbeat)
                 .where(
+                    WorkerHeartbeat.engine != "maintenance",
                     WorkerHeartbeat.last_seen
-                    > datetime.now(UTC) - timedelta(seconds=runtime.settings.lease_s)
+                    > func.clock_timestamp() - timedelta(seconds=runtime.settings.lease_s),
                 )
             )
         if not workers:
@@ -59,6 +81,41 @@ def workspaces(request: Request, runtime: RuntimeDep):
     return WorkspaceToken(
         token=create_workspace(runtime, request.client.host if request.client else "unknown")
     )
+
+
+@router.get("/api/workspace", response_model=WorkspaceInfo)
+def workspace_info(runtime: RuntimeDep, workspace: WorkspaceDep):
+    with runtime.db.session() as session:
+        row = session.get(Workspace, workspace)
+        return WorkspaceInfo(
+            recovery_enabled=bool(row.recovery_hash),
+            recovery_required=runtime.settings.environment == "production",
+        )
+
+
+@router.post("/api/workspace/recovery", response_model=RecoveryCode)
+def recovery_setup(runtime: RuntimeDep, workspace: WorkspaceDep):
+    return RecoveryCode(recovery_code=prepare_recovery(runtime, workspace))
+
+
+@router.post("/api/workspace/recovery/confirm", status_code=204)
+def recovery_confirm(payload: RecoveryCode, runtime: RuntimeDep, workspace: WorkspaceDep):
+    confirm_recovery(runtime, workspace, payload.recovery_code)
+    return Response(status_code=204)
+
+
+@router.post("/api/workspaces/recover", response_model=WorkspaceToken)
+def recover(payload: RecoveryCode, request: Request, runtime: RuntimeDep):
+    return WorkspaceToken(
+        token=recover_workspace(
+            runtime, payload.recovery_code, request.client.host if request.client else "unknown"
+        )
+    )
+
+
+@router.post("/api/workspace/rotate", response_model=WorkspaceToken)
+def rotate(runtime: RuntimeDep, workspace: WorkspaceDep):
+    return WorkspaceToken(token=rotate_token(runtime, workspace))
 
 
 @router.post("/api/receipts", response_model=UploadResult, status_code=202)

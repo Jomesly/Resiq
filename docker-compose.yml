@@ -62,6 +62,18 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  maintenance:
+    build:
+      context: ./backend
+      target: base
+    environment: *backend-env
+    command: ["python", "-m", "app.maintenance"]
+    volumes:
+      - receipt-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 volumes:
   postgres-data:
   receipt-data:

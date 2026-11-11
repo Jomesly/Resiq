@@ -1,5 +1,7 @@
 # Resiq project evaluation
 
+> The original MVP observations below are historical. Production hardening, recovery-code access, cleanup, deployment files, and fresh verification are recorded in [the release readiness report](release-readiness.md). No public deployment or held-out real-photo accuracy is claimed.
+
 Evaluation date: 11 November 2026. Status: integrated local MVP with independent review and regression fixes. No public deployment has been performed.
 
 Follow-up: a user-supplied fuel receipt exposed missing support for `Php` amounts, VATable subtotal labels, following quantity rows and historical dates. These are corrected in extraction `rules-2`; 71 backend tests pass. A real OCR rerun of that image extracted VATable sales178.57, VAT21.43, exempt0.00 and total200.00, plus date2015-02-04 and quantity6.3291 at unit31.60. Old dates are preserved with a review warning. This is a single additional diagnostic example, not a revised accuracy benchmark. Stored readings require **Read again** to use the new rules.

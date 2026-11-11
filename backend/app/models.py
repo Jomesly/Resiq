@@ -15,6 +15,8 @@ class Workspace(Base):
     __tablename__ = "workspaces"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    recovery_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    pending_recovery_hash: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -93,3 +95,9 @@ class WorkerHeartbeat(Base):
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     engine: Mapped[str] = mapped_column(String(40))
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class BlobCleanup(Base):
+    __tablename__ = "blob_cleanup"
+    prefix: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

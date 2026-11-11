@@ -21,7 +21,7 @@ URL = os.getenv(
 @pytest.fixture
 def runtime(tmp_path):
     schema = "resiq_test_" + uuid.uuid4().hex
-    admin = create_engine(URL)
+    admin = create_engine(URL, connect_args={"connect_timeout": 5})
     with admin.begin() as connection:
         connection.execute(text(f"CREATE SCHEMA {schema}"))
     settings = Settings(

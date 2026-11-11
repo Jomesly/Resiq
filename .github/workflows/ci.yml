@@ -3,6 +3,16 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  production-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python deploy/generate-env.py --domain receipts.example.invalid --output deploy/.env.ci
+      - run: docker compose --env-file deploy/.env.ci -f deploy/compose.production.yml config --quiet
+      - run: docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://receipts.example.invalid -t resiq-frontend:ci frontend
   backend:
     runs-on: ubuntu-latest
     services:
@@ -28,7 +38,7 @@ jobs:
           cache-dependency-path: backend/constraints.txt
       - run: sudo apt-get update && sudo apt-get install -y libgl1 libglib2.0-0 tesseract-ocr
       - run: pip install -c constraints.txt '.[dev,s3]'
-      - run: ruff check app tests migrations eval && ruff format --check app tests migrations eval
+      - run: ruff check app tests migrations eval ../deploy/backup.py ../deploy/generate-env.py && ruff format --check app tests migrations eval ../deploy/backup.py ../deploy/generate-env.py
       - run: alembic upgrade head && alembic check
       - run: pytest
       - run: python eval/run.py --engine tesseract --output eval/results-ci.json
@@ -49,7 +59,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run lint && npm test && npm run build
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run lint && npm run typecheck && npm test && npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
@@ -85,6 +96,16 @@ jobs:
         working-directory: frontend
       - run: docker compose logs
         if: failure()
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -c backend/constraints.txt httpx
+      - run: python eval/load.py --count 8 --concurrency 2 --output eval/load-results-ci.json
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bounded-load-smoke
+          path: backend/eval/load-results-ci.json
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
