@@ -1,0 +1,29 @@
+[
+ {
+  "shape": "the book page",
+  "theme": "custom",
+  "axes": "light/high-contrast-serif/cool",
+  "hero": "headline beside a thermal receipt whose total runs into a new journal row",
+  "nav": "ruled header, wordmark and one action",
+  "footer": "closing line ruled off",
+  "imagery": "product",
+  "photos": [],
+  "entry": "index.html",
+  "fingerprint": "ledger-green/besley/ballpoint-blue",
+  "sections": [
+   "hero",
+   "passes",
+   "balance",
+   "journal",
+   "two inks",
+   "footer"
+  ],
+  "signature": "red double rule under a balanced total",
+  "waived": [
+   "79"
+  ],
+  "prompt": "Resiq receipt intelligence, columnar book direction",
+  "date": "2026-11-10",
+  "mode": "build"
+ }
+]

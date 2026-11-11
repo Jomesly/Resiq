@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kapihan sa Kanto, receipt review: Resiq</title>
+<meta name="description" content="Review a receipt Resiq has read: check each field against the photo and save the entry to your journal.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Besley:wght@500&family=Hanken+Grotesk:wght@400;600&family=Azeret+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="wordmark" href="index.html">Resiq</a>
+  <nav aria-label="Main">
+    <a href="#" aria-current="page">Receipts</a>
+    <a href="#">Journal</a>
+  </nav>
+  <a class="btn btn--secondary" href="#">Upload receipts</a>
+</header>
+
+<p class="crumbs"><a href="#">Receipts</a> <span aria-hidden="true">/</span> <span>Kapihan sa Kanto</span></p>
+
+<main class="review">
+  <section class="viewer" aria-label="Receipt photo">
+    <div class="viewer__bar">
+      <div class="tabs" role="tablist" aria-label="Processing stage">
+        <button role="tab" aria-selected="false" data-stage="raw">As taken</button>
+        <button role="tab" aria-selected="false" data-stage="flat">Straightened</button>
+        <button role="tab" aria-selected="true" data-stage="read">Read</button>
+      </div>
+      <div class="tools">
+        <button class="btn btn--on-dark" aria-pressed="false" id="all-text">Show all text</button>
+        <button class="btn btn--on-dark" aria-label="Zoom out">−</button>
+        <button class="btn btn--on-dark" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+    <p class="viewer__note">The photo is a little soft, so some figures may be misread.</p>
+    <div class="stage">
+      <div class="photo" id="photo">
+        <img src="img/misread-home-desktop-part.png" width="536" height="736" alt="Receipt from Kapihan sa Kanto, 9 November 2026">
+        <svg viewBox="0 0 536 736" preserveAspectRatio="none" aria-hidden="true">
+          <rect class="box" data-for="merchant" x="24" y="40" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="tin" x="24" y="112" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="or" x="24" y="148" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="date" x="24" y="184" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="item1" x="24" y="292" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="item2" x="24" y="328" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="vatable" x="24" y="400" width="488" height="36" rx="4"/>
+          <rect class="box" data-for="vat" x="24" y="436" width="488" height="36" rx="4"/>
+          <rect class="box is-active" data-for="total" x="24" y="472" width="488" height="36" rx="4"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <form class="entry-panel" aria-labelledby="entry-title" onsubmit="return false">
+    <div class="entry-panel__head">
+      <span class="chip chip--check" id="status">Needs review</span>
+      <h1 id="entry-title">Kapihan sa Kanto</h1>
+      <p class="meta">Uploaded 11 November 2026, 9:41 am</p>
+    </div>
+    <p class="balance" id="balance" role="status"><strong>Does not balance by ₱10.00.</strong> The lines add to ₱135.00; the total was read as ₱145.00.</p>
+
+    <fieldset>
+      <legend>Who and when</legend>
+      <div class="field field--wide"><label for="merchant">Merchant</label><input id="merchant" data-box="merchant" value="Kapihan sa Kanto"><small>Read as KAPIHAN SA KANTO</small></div>
+      <div class="field"><label for="tin">TIN</label><input id="tin" class="fig" data-box="tin" value="000-482-117-000"></div>
+      <div class="field"><label for="or">OR no.</label><input id="or" class="fig" data-box="or" value="0004417"></div>
+      <div class="field"><label for="date">Date</label><input id="date" type="date" data-box="date" value="2026-11-09"></div>
+      <div class="field"><label for="cat">Category <span class="chip chip--busy">Suggested</span></label><select id="cat"><option>Food and drinks</option><option>Groceries</option><option>Transport</option><option>Fuel</option><option>Utilities</option><option>Office supplies</option><option>Health</option><option>Other</option></select></div>
+    </fieldset>
+
+    <fieldset class="amounts" id="amounts">
+      <legend>Amounts</legend>
+      <div class="amount-row"><label for="vatable">VATable sales</label><div class="field"><input id="vatable" class="fig" inputmode="decimal" data-box="vatable" value="120.54"></div></div>
+      <div class="amount-row"><label for="vat">VAT at 12%</label><div class="field"><input id="vat" class="fig" inputmode="decimal" data-box="vat" value="14.46"></div></div>
+      <div class="amount-row"><label for="exempt">VAT-exempt sales</label><div class="field"><input id="exempt" class="fig" inputmode="decimal" value="0.00"></div></div>
+      <div class="amount-row amount-row--total">
+        <label for="total">Total <span class="chip chip--check" id="total-tag">Check</span></label>
+        <div class="field"><input id="total" class="fig" inputmode="decimal" data-box="total" value="145.00" aria-describedby="total-read"></div>
+        <small class="read meta" id="total-read">Read as P145.0O</small>
+        <div class="closing" aria-hidden="true"></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="items">
+      <legend>Line items</legend>
+      <table>
+        <thead><tr><th scope="col">Particulars</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Unit</th><th scope="col" class="num">Amount</th></tr></thead>
+        <tbody>
+          <tr data-box="item1"><td>Kape barako</td><td class="num fig">2</td><td class="num fig">45.00</td><td class="num fig">90.00</td></tr>
+          <tr data-box="item2"><td>Ensaymada</td><td class="num fig">1</td><td class="num fig">45.00</td><td class="num fig">45.00</td></tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn--secondary add">Add a line</button>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn btn--primary" type="submit" id="save">Save to journal</button>
+      <button class="btn btn--secondary" type="button">Read again</button>
+      <button class="btn btn--quiet" type="button">Delete</button>
+    </div>
+  </form>
+</main>
+
+<section class="states" aria-label="Other states of this screen">
+  <div class="state">
+    <h2>Still reading this receipt</h2>
+    <ol class="steps"><li class="done">Straighten</li><li aria-current="step">Read the lines</li><li>Fill the entry</li></ol>
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  </div>
+  <div class="state">
+    <h2>No text found in this photo</h2>
+    <p>It may be too dark or not a receipt. Try again in brighter light, or enter it by hand.</p>
+    <button class="btn btn--secondary" type="button">Enter it by hand</button>
+  </div>
+  <div class="state">
+    <h2>Saved to November</h2>
+    <p>₱135.00 is now the ninth row of your journal. Two receipts still need review.</p>
+    <a class="btn btn--secondary" href="#">Next receipt</a>
+  </div>
+</section>
+
+<script>
+(function () {
+  const boxes = [...document.querySelectorAll('.box')];
+  const activate = (k) => boxes.forEach((b) => b.classList.toggle('is-active', b.dataset.for === k));
+  document.querySelectorAll('[data-box]').forEach((el) => {
+    const k = el.dataset.box;
+    el.addEventListener('focusin', () => activate(k));
+    el.addEventListener('mouseenter', () => activate(k));
+  });
+  boxes.forEach((b) => b.addEventListener('click', () => { const t = document.querySelector(`input[data-box="${b.dataset.for}"]`); if (t) t.focus(); else activate(b.dataset.for); }));
+
+  const cents = (v) => Math.round(parseFloat(String(v).replace(/,/g, '')) * 100) || 0;
+  const peso = (c) => '₱' + (c / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  const total = document.getElementById('total');
+  function check() {
+    const lines = cents(vatable.value) + cents(vat.value) + cents(exempt.value);
+    const t = cents(total.value), ok = lines === t;
+    document.getElementById('amounts').classList.toggle('is-balanced', ok);
+    const bal = document.getElementById('balance');
+    bal.classList.toggle('is-ok', ok);
+    bal.innerHTML = ok ? '<strong>Balanced.</strong> VAT is 12% of VATable sales, and the lines add to the total.'
+                       : `<strong>Does not balance by ${peso(Math.abs(t - lines))}.</strong> The lines add to ${peso(lines)}; the total says ${peso(t)}.`;
+    document.getElementById('total-tag').hidden = ok;
+    const s = document.getElementById('status'); s.textContent = ok ? 'Ready to save' : 'Needs review'; s.className = 'chip ' + (ok ? 'chip--ok' : 'chip--check');
+  }
+  document.querySelectorAll('.amounts input').forEach((i) => i.addEventListener('input', () => { i.classList.add('is-edited'); check(); }));
+  document.querySelector('#merchant').addEventListener('input', (e) => { e.target.classList.add('is-edited'); document.getElementById('entry-title').textContent = e.target.value || 'Untitled receipt'; });
+
+  const photo = document.getElementById('photo');
+  document.querySelectorAll('[role="tab"]').forEach((tab) => tab.addEventListener('click', () => {
+    document.querySelectorAll('[role="tab"]').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+    photo.classList.toggle('is-raw', tab.dataset.stage !== 'read');
+  }));
+  const allText = document.getElementById('all-text');
+  allText.addEventListener('click', () => allText.setAttribute('aria-pressed', String(allText.getAttribute('aria-pressed') !== 'true')));
+})();
+</script>
+</body>
+</html>
