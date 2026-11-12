@@ -24,6 +24,7 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q"
 markers = ["ocr: invokes a real OCR engine"]
 [tool.ruff]
